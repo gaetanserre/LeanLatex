@@ -92,7 +92,17 @@ def create_figure(lean_block, i, output_dir):
             ]
         )
 
-        dict_fig[lean_block["content"]] = f"{output_dir}/lean-block-{i}.pdf"
+        # Remove all parents of output_dir until we reach the "figures" directory
+        full_path = Path(f"{output_dir}/lean-block-{i}.pdf")
+        parts = full_path.parts
+        try:
+            figures_index = parts.index("figures")
+            relative_path = Path(*parts[figures_index:])
+        except ValueError:
+            # If "figures" is not in the path, use the full path
+            relative_path = full_path
+
+        dict_fig[lean_block["content"]] = str(relative_path)
 
 
 def insert_figure_in_latex(lines, lean_block, i):
