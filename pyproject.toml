@@ -5,27 +5,27 @@ authors = [
 maintainers = [
   { name = "Gaëtan Serré", email = "gaetan.serre@ens-paris-saclay.fr" },
 ]
-name = "lean_latex"
+name = "code_latex"
 dependencies = []
-description = "A LaTeX preprocessor for Lean code"
+description = "A LaTeX preprocessor for code blocks"
 readme = "README.md"
 license = { file = "LICENSE" }
 dynamic = ["version"]
 
 [tool.setuptools.dynamic]
-version = { attr = "lean_latex.__version__" }
+version = { attr = "code_latex.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["lean_latex"]
+include = ["code_latex"]
 
 [tool.setuptools.package-data]
-lean_latex = ["figures/**"]
+code_latex = ["figures/**"]
 
 [project.urls]
 Repository = "https://github.com/gaetanserre/lean_latex"
 
 [project.scripts]
-lean_latex = "lean_latex.leanlatex:main"
+code_latex = "code_latex.codelatex:main"
 
 [build-system]
 requires = ["setuptools", "toml"]

@@ -1,5 +1,6 @@
 import argparse
 import subprocess
+import re
 from pathlib import Path
 
 wd = Path(__file__).parent.resolve()
@@ -34,44 +35,49 @@ def parse_options(option_str):
     return options
 
 
-def find_lean_blocks(latex_content):
-    lean_blocks = []
+def find_code_blocks(latex_content):
+    code_blocks = []
     lines = latex_content.splitlines()
-    inside_lean_block = False
+    inside_code_block = False
     current_block = []
+    begin_pattern = re.compile(r"^\\begin\{code\}\{([^}]*)\}(\[.*\])?$")
 
     for i, line in enumerate(lines):
-        if line.strip().startswith(r"\begin{leancode}"):
-            inside_lean_block = True
+        stripped_line = line.strip()
+        begin_match = begin_pattern.match(stripped_line)
+        if begin_match:
+            inside_code_block = True
             current_block = []
             start = i
-            options = parse_options(line.strip()[len(r"\begin{leancode}") :])
-        elif line.strip().startswith(r"\end{leancode}"):
-            inside_lean_block = False
-            lean_blocks.append(
+            language = begin_match.group(1).strip()
+            options = parse_options(begin_match.group(2) or "[]")
+        elif stripped_line.startswith(r"\end{code}"):
+            inside_code_block = False
+            code_blocks.append(
                 {
                     "start": start,
                     "end": i,
+                    "language": language,
                     "options": options,
                     "content": "\n".join(current_block),
                 }
             )
-        elif inside_lean_block:
+        elif inside_code_block:
             current_block.append(line)
 
-    return lean_blocks, lines
+    return code_blocks, lines
 
 
-def create_figure(lean_block, i, output_dir):
-    font_size = lean_block["options"].get("fontsize", "7pt")
-    numbering = bool(int(lean_block["options"].get("numbering", "0")))
+def create_figure(code_block, i, output_dir):
+    font_size = code_block["options"].get("fontsize", "7pt")
+    numbering = bool(int(code_block["options"].get("numbering", "0")))
 
     if numbering:
         show_raw_line = '#show raw.line: it => [#text(fill: rgb("#aaaaaa"), if it.count >= 10 and it.number < 10 { " " + str(it.number) } else { str(it.number) } ) #it]'
     else:
         show_raw_line = ""
 
-    if lean_block["content"] not in dict_fig:
+    if code_block["content"] not in dict_fig:
         typst_content = f"""
 #import "template.typ": *
 
@@ -81,28 +87,24 @@ def create_figure(lean_block, i, output_dir):
 
 {show_raw_line}
 
-#align(center, box(
-  [
-```lean4
-{lean_block['content']}
+```{code_block['language']}
+{code_block['content']}
 ```
-  ],
-))
       """
-        with open(f"{wd}/figures/lean-block-{i}.typ", "w") as f:
+        with open(f"{wd}/figures/code-block-{i}.typ", "w") as f:
             f.write(typst_content)
 
         subprocess.run(
             [
                 "typst",
                 "compile",
-                f"{wd}/figures/lean-block-{i}.typ",
-                f"{output_dir}/lean-block-{i}.pdf",
+                f"{wd}/figures/code-block-{i}.typ",
+                f"{output_dir}/code-block-{i}.pdf",
             ]
         )
 
         # Remove all parents of output_dir until we reach the "figures" directory
-        full_path = Path(f"{output_dir}/lean-block-{i}.pdf")
+        full_path = Path(f"{output_dir}/code-block-{i}.pdf")
         parts = full_path.parts
         try:
             figures_index = parts.index("figures")
@@ -111,32 +113,32 @@ def create_figure(lean_block, i, output_dir):
             # If "figures" is not in the path, use the full path
             relative_path = full_path
 
-        dict_fig[lean_block["content"]] = str(relative_path)
+        dict_fig[code_block["content"]] = str(relative_path)
 
 
-def insert_figure_in_latex(lines, lean_block, i):
-    lean_block["options"].pop("fontsize", None)
-    lean_block["options"].pop("numbering", None)
+def insert_figure_in_latex(lines, code_block):
+    code_block["options"].pop("fontsize", None)
+    code_block["options"].pop("numbering", None)
 
     options = ",".join(
-        [f"{key}={value}" for key, value in lean_block["options"].items()]
+        [f"{key}={value}" for key, value in code_block["options"].items()]
     )
-    fig = dict_fig[lean_block["content"]]
+    fig = dict_fig[code_block["content"]]
     graphics = f"\\includegraphics[{options}]{{{fig}}}".split("\n")
     global diff_lines
 
-    lines[lean_block["start"] - diff_lines : lean_block["end"] + 1 - diff_lines] = (
+    lines[code_block["start"] - diff_lines : code_block["end"] + 1 - diff_lines] = (
         graphics
     )
     # update diff_lines
-    diff_lines += (lean_block["end"] - lean_block["start"] + 1) - len(graphics)
+    diff_lines += (code_block["end"] - code_block["start"] + 1) - len(graphics)
 
 
 def clean():
     # remove all files in figures/
     figures_dir = wd / Path("figures")
     for file in figures_dir.iterdir():
-        if file.name.startswith("lean-block-"):
+        if file.name.startswith("code-block-"):
             file.unlink()
 
 
@@ -146,17 +148,18 @@ def main():
         raise FileNotFoundError(f"The file {args.doc} does not exist.")
     with open(args.doc, "r") as f:
         latex_content = f.read()
-    lean_blocks, lines = find_lean_blocks(latex_content)
-    output_dir = Path(args.doc).parent.resolve() / "figures" / "leanblocks"
-    # delete all existing files in output_dir
-    if output_dir.exists():
-        for file in output_dir.iterdir():
-            file.unlink()
-        output_dir.rmdir()
-    output_dir.mkdir(exist_ok=True, parents=True)
-    for i, lean_block in enumerate(lean_blocks):
-        create_figure(lean_block, i, output_dir)
-        insert_figure_in_latex(lines, lean_block, i)
+    code_blocks, lines = find_code_blocks(latex_content)
+    if code_blocks != []:
+        output_dir = Path(args.doc).parent.resolve() / "figures" / "codeblocks"
+        # delete all existing files in output_dir
+        if output_dir.exists():
+            for file in output_dir.iterdir():
+                file.unlink()
+            output_dir.rmdir()
+        output_dir.mkdir(exist_ok=True, parents=True)
+        for i, code_block in enumerate(code_blocks):
+            create_figure(code_block, i, output_dir)
+            insert_figure_in_latex(lines, code_block)
     new_latex_content = "\n".join(lines)
     output_file = Path(args.doc).name + "_processed.tex"
     with open(Path(args.doc).parent / output_file, "w") as f:
