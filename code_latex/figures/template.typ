@@ -6,7 +6,7 @@
 
   set page(width: auto, height: auto, margin: 1pt)
 
-  show raw: set text(font: "FiraCode Nerd Font")
+  show raw: set text(font: ("FiraCode Nerd Font", "JuliaMono"))
 
   show raw.where(block: true): block.with(
     fill: rgb("#f6f8fa"),
@@ -17,5 +17,3 @@
 
   doc
 }
-
-

@@ -13,7 +13,7 @@ contexts:
         1: keyword.other.definitioncommand.lean
       push:
         - meta_scope: meta.definitioncommand.lean
-        - match: '(?=\bwith\b|\bextends\b|[:\|\(\[\{⦃<>])'
+        - match: '(?=\bwith\b|\bextends\b|[:\|\(\[\{⦃⦄<>])'
           pop: true
         - include: comments
         - include: definitionName
@@ -23,7 +23,7 @@ contexts:
     - match: '\battribute\b\s*\[[^\]]*\]'
       scope: storage.modifier.lean
     - match: '@\[[^\]]*\]'
-    - match: '\(|\)|\[|\]|\{|\}'
+    - match: '\(|\)|\[|\]|\{|\}|⦃|⦄'
       scope: keyword.control.import.lean
       scope: storage.modifier.lean
     - match: \b(?<!\.)(private|meta|mutual|protected|noncomputable)\b
@@ -94,7 +94,7 @@ contexts:
           pop: true
         - include: scope:source.lean.markdown
   definitionName:
-    - match: '\b[^:«»\(\)\{\}[:space:]=→λ∀?][^:«»\(\)\{\}[:space:]]*'
+    - match: '\b[^:«»\(\)\{\}⦃⦄[:space:]=→λ∀?][^:«»\(\)\{\}⦃⦄[:space:]]*'
       scope: entity.name.function.lean
     - match: «
       push:
