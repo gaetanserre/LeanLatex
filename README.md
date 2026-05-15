@@ -42,7 +42,7 @@ It will generate `your_document.tex_processed.tex` with the code replaced by the
 \includegraphics[width=\textwidth,height=\textheight]{figures/codeblocks/code-block-0.pdf}
 ```
 
-It is easy to create a custom LaTeX command to include the processed file in your main document.
+It is easy to create a custom LaTeX recipe to automate this process.
 
 #### Font size option
 
